@@ -1,45 +1,93 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
 
-function NavbarPure({
-  username,
-  role,
-  onLogout,
-}: {
-  username: string
-  role: 'admin' | 'user'
-  onLogout: () => void
-}) {
-  return (
-    <nav>
-      <span>Book Booker</span>
-      <span>{username}</span>
-      {role === 'admin' && <a href="/users">Users</a>}
-      {role === 'user' && <a href="/reservations">My Reservations</a>}
-      <button onClick={onLogout}>Logout</button>
-    </nav>
-  )
-}
+const mockUseAuth = vi.hoisted(() =>
+  vi.fn(() => ({
+    user: { id: '1', username: 'admin', role: 'admin' as const },
+    isAuthenticated: true,
+    isLoading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    checkAuth: vi.fn(),
+  })),
+)
+
+const mockUseLocation = vi.hoisted(() => vi.fn(() => ({ pathname: '/books' })))
+
+vi.mock('@tanstack/react-router', () => ({
+  useLocation: () => mockUseLocation(),
+  Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
+}))
+
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => mockUseAuth(),
+}))
+
+import Navbar from '@/components/Navbar'
+
+beforeEach(() => {
+  mockUseAuth.mockReturnValue({
+    user: { id: '1', username: 'admin', role: 'admin' as const },
+    isAuthenticated: true,
+    isLoading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    checkAuth: vi.fn(),
+  })
+  mockUseLocation.mockReturnValue({ pathname: '/books' })
+})
 
 describe('Navbar', () => {
-  it('shows admin links for admin role', () => {
-    render(<NavbarPure username="admin" role="admin" onLogout={() => {}} />)
+  it('test_shows_admin_links', () => {
+    render(<Navbar />)
     expect(screen.getByText('Users')).toBeInTheDocument()
     expect(screen.queryByText('My Reservations')).not.toBeInTheDocument()
   })
 
-  it('shows user links for user role', () => {
-    render(<NavbarPure username="user" role="user" onLogout={() => {}} />)
+  it('test_shows_user_links', () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: '2', username: 'user1', role: 'user' as const },
+      isAuthenticated: true,
+      isLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      checkAuth: vi.fn(),
+    })
+    render(<Navbar />)
     expect(screen.getByText('My Reservations')).toBeInTheDocument()
     expect(screen.queryByText('Users')).not.toBeInTheDocument()
   })
 
-  it('calls onLogout when logout button clicked', async () => {
+  it('test_hides_navbar_on_login_page', () => {
+    mockUseLocation.mockReturnValue({ pathname: '/login' })
+    const { container } = render(<Navbar />)
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('test_shows_username', () => {
+    render(<Navbar />)
+    expect(screen.getByText('admin')).toBeInTheDocument()
+  })
+
+  it('test_logout_button_works', async () => {
+    const logout = vi.fn()
+    mockUseAuth.mockReturnValue({
+      user: { id: '1', username: 'admin', role: 'admin' as const },
+      isAuthenticated: true,
+      isLoading: false,
+      login: vi.fn(),
+      logout,
+      checkAuth: vi.fn(),
+    })
     const user = userEvent.setup()
-    const onLogout = vi.fn()
-    render(<NavbarPure username="admin" role="admin" onLogout={onLogout} />)
+    render(<Navbar />)
     await user.click(screen.getByText('Logout'))
-    expect(onLogout).toHaveBeenCalledOnce()
+    expect(logout).toHaveBeenCalledOnce()
+  })
+
+  it('test_dashboard_link_visible', () => {
+    render(<Navbar />)
+    expect(screen.getByText('Dashboard')).toBeInTheDocument()
   })
 })

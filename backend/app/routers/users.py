@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.auth import hash_password, require_role
 from app.db import execute_insert, execute_query
@@ -34,10 +35,10 @@ def create_user(body: UserCreate, _: dict = admin_required):
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: str, _: dict = admin_required):
+def get_user(user_id: uuid.UUID, _: dict = admin_required):
     rows = execute_query(
         "SELECT id, username, role, created_at FROM users WHERE id = %s",
-        (user_id,),
+        (str(user_id),),
     )
     if not rows:
         raise HTTPException(
@@ -48,10 +49,10 @@ def get_user(user_id: str, _: dict = admin_required):
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-def update_user(user_id: str, body: UserUpdate, _: dict = admin_required):
+def update_user(user_id: uuid.UUID, body: UserUpdate, _: dict = admin_required):
     existing = execute_query(
         "SELECT id, username, role, created_at FROM users WHERE id = %s",
-        (user_id,),
+        (str(user_id),),
     )
     if not existing:
         raise HTTPException(
@@ -68,7 +69,7 @@ def update_user(user_id: str, body: UserUpdate, _: dict = admin_required):
     if not fields:
         return UserResponse(**existing[0])
     set_clause = ", ".join(f"{k} = %s" for k in fields)
-    values = list(fields.values()) + [user_id]
+    values = list(fields.values()) + [str(user_id)]
     user = execute_insert(
         f"UPDATE users SET {set_clause} WHERE id = %s RETURNING id, username, role, created_at",
         values,
@@ -77,13 +78,13 @@ def update_user(user_id: str, body: UserUpdate, _: dict = admin_required):
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: str, _: dict = admin_required):
+def delete_user(user_id: uuid.UUID, _: dict = admin_required):
     conn = None
     from app.db import get_connection
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        cursor.execute("DELETE FROM users WHERE id = %s", (str(user_id),))
         if cursor.rowcount == 0:
             conn.rollback()
             raise HTTPException(

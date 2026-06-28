@@ -1,10 +1,11 @@
+import uuid
 from datetime import datetime
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Literal, Optional
 
 
 class LoginRequest(BaseModel):
-    username: str
+    username: str = Field(min_length=1)
     password: str
 
 
@@ -22,13 +23,13 @@ class UserMeResponse(BaseModel):
 class UserCreate(BaseModel):
     username: str
     password: str
-    role: str = "user"
+    role: Literal["admin", "user"] = "user"
 
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
-    role: Optional[str] = None
+    role: Optional[Literal["admin", "user"]] = None
 
 
 class UserResponse(BaseModel):
@@ -60,7 +61,7 @@ class BookResponse(BaseModel):
 
 
 class ReservationCreate(BaseModel):
-    book_id: str
+    book_id: uuid.UUID
 
 
 class ReservationResponse(BaseModel):

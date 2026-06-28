@@ -29,3 +29,28 @@ def test_me_authenticated(client, admin_token):
 def test_me_no_token(client):
     response = client.get("/auth/me")
     assert response.status_code == 401
+
+
+def test_login_missing_username(client):
+    response = client.post("/auth/login", json={"password": "admin123"})
+    assert response.status_code == 422
+
+
+def test_login_missing_password(client):
+    response = client.post("/auth/login", json={"username": "admin"})
+    assert response.status_code == 422
+
+
+def test_me_invalid_token(client):
+    response = client.get("/auth/me", headers={"Authorization": "Bearer invalid-token"})
+    assert response.status_code == 401
+
+
+def test_me_expired_token(client):
+    import time
+    import jwt
+    from app.config import settings
+    payload = {"sub": "admin", "role": "admin", "exp": time.time() - 3600}
+    token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401

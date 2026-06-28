@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.auth import get_current_user, require_role
 from app.db import get_connection
@@ -13,7 +14,7 @@ def reserve_book(body: ReservationCreate, current_user: dict = Depends(get_curre
     try:
         cursor.execute(
             "SELECT id, title, available FROM books WHERE id = %s FOR UPDATE",
-            (body.book_id,),
+            (str(body.book_id),),
         )
         book = cursor.fetchone()
         if not book:
@@ -28,7 +29,7 @@ def reserve_book(body: ReservationCreate, current_user: dict = Depends(get_curre
             )
         cursor.execute(
             "SELECT id FROM reservations WHERE user_id = %s AND book_id = %s AND returned_at IS NULL",
-            (str(current_user["id"]), body.book_id),
+            (str(current_user["id"]), str(body.book_id)),
         )
         if cursor.fetchone():
             raise HTTPException(
@@ -37,11 +38,11 @@ def reserve_book(body: ReservationCreate, current_user: dict = Depends(get_curre
             )
         cursor.execute(
             "UPDATE books SET available = FALSE WHERE id = %s",
-            (body.book_id,),
+            (str(body.book_id),),
         )
         cursor.execute(
             "INSERT INTO reservations (user_id, book_id) VALUES (%s, %s) RETURNING id, user_id, book_id, reserved_at, returned_at",
-            (str(current_user["id"]), body.book_id),
+            (str(current_user["id"]), str(body.book_id)),
         )
         reservation = cursor.fetchone()
         conn.commit()
@@ -125,7 +126,7 @@ def list_all_reservations(_: dict = Depends(require_role("admin"))):
 
 
 @router.patch("/{reservation_id}/return", response_model=ReservationDetailResponse)
-def return_book(reservation_id: str, current_user: dict = Depends(get_current_user)):
+def return_book(reservation_id: uuid.UUID, current_user: dict = Depends(get_current_user)):
     conn = get_connection()
     cursor = conn.cursor()
     try:
@@ -135,7 +136,7 @@ def return_book(reservation_id: str, current_user: dict = Depends(get_current_us
             "FROM reservations r "
             "JOIN books b ON r.book_id = b.id "
             "WHERE r.id = %s",
-            (reservation_id,),
+            (str(reservation_id),),
         )
         reservation = cursor.fetchone()
         if not reservation:
@@ -155,7 +156,7 @@ def return_book(reservation_id: str, current_user: dict = Depends(get_current_us
             )
         cursor.execute(
             "UPDATE reservations SET returned_at = NOW() WHERE id = %s AND returned_at IS NULL",
-            (reservation_id,),
+            (str(reservation_id),),
         )
         cursor.execute(
             "UPDATE books SET available = TRUE WHERE id = %s",

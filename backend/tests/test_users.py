@@ -80,3 +80,73 @@ def test_non_admin_cannot_create(client, user_token):
         headers={"Authorization": f"Bearer {user_token}"},
     )
     assert response.status_code == 403
+
+
+def test_create_user_invalid_role(client, admin_token):
+    response = client.post(
+        "/users",
+        json={"username": "badroleuser", "password": "pass", "role": "superadmin"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 422
+
+
+def test_update_user_change_password(client, admin_token):
+    create_resp = client.post(
+        "/users",
+        json={"username": "passuser", "password": "oldpass", "role": "user"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    user_id = create_resp.json()["id"]
+    client.put(
+        f"/users/{user_id}",
+        json={"password": "newpass"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    login_resp = client.post("/auth/login", json={"username": "passuser", "password": "newpass"})
+    assert login_resp.status_code == 200
+    assert "access_token" in login_resp.json()
+
+
+def test_update_nonexistent_user(client, admin_token):
+    response = client.put(
+        "/users/00000000-0000-0000-0000-000000000000",
+        json={"username": "nobody"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 404
+
+
+def test_delete_nonexistent_user(client, admin_token):
+    response = client.delete(
+        "/users/00000000-0000-0000-0000-000000000000",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 404
+
+
+def test_non_admin_cannot_list(client, user_token):
+    response = client.get("/users", headers={"Authorization": f"Bearer {user_token}"})
+    assert response.status_code == 403
+
+
+def test_non_admin_cannot_update(client, user_token):
+    response = client.put(
+        "/users/00000000-0000-0000-0000-000000000000",
+        json={"username": "hacker"},
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert response.status_code == 403
+
+
+def test_non_admin_cannot_delete(client, user_token):
+    response = client.delete(
+        "/users/00000000-0000-0000-0000-000000000000",
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert response.status_code == 403
+
+
+def test_unauthenticated_cannot_access(client):
+    response = client.get("/users")
+    assert response.status_code == 401
