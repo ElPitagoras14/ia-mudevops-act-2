@@ -62,3 +62,19 @@ tanstackIntent:
     run: "pnpm dlx @tanstack/intent@latest load @tanstack/virtual-file-routes#virtual-file-routes"
     for: "Programmatic route tree building as an alternative to filesystem conventions: rootRoute, index, route, layout, physical, defineVirtualSubtreeConfig. Use with TanStack Router plugin's virtualRouteConfig option."
 <!-- intent-skills:end -->
+
+## E2E Test Patterns
+
+### Form input fill on SPA-loaded React controlled inputs
+`page.fill()` does NOT reliably propagate to React controlled inputs on pages loaded via SPA navigation (not full page reload). Use this pattern instead:
+```typescript
+await page.locator('#fieldId').fill('')
+await page.locator('#fieldId').type(value, { delay: 30 })
+```
+`page.fill()` works reliably on forms loaded via `page.goto()` (full page reload) like the login page.
+
+### Database seed hashes
+When re-seeding the database from PowerShell, `$` characters in argon2id hashes get expanded. Always write the SQL to a file first, then pipe it:
+```powershell
+Get-Content path\to\seed.sql -Raw | docker compose exec -T db psql -U user -d db
+```

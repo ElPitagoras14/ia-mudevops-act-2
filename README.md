@@ -13,7 +13,12 @@ Sistema de gestión de reservas de libros.
 ### 1. Base de datos
 
 ```bash
-docker compose up -d
+docker run -d --name book-postgres ^
+  -e POSTGRES_USER=book_user ^
+  -e POSTGRES_PASSWORD=book_pass ^
+  -e POSTGRES_DB=book_booker_test ^
+  -p 5432:5432 ^
+  postgres:18-alpine
 ```
 
 ### 2. Backend
@@ -58,7 +63,12 @@ cd backend
 uv sync
 
 # 2. Verifica que Docker esté corriendo y PostgreSQL esté levantado
-docker compose up -d
+docker run -d --name book-postgres ^
+  -e POSTGRES_USER=book_user ^
+  -e POSTGRES_PASSWORD=book_pass ^
+  -e POSTGRES_DB=book_booker_test ^
+  -p 5432:5432 ^
+  postgres:18-alpine
 
 # 3. Ejecutar todos los tests
 uv run pytest
